@@ -1,8 +1,14 @@
 # Triki Music Controller (PC Desktop) 🎵
 
-> ⚠️ **DISCLAIMER / ВАЖНОЕ ПРАВОВОЕ УВЕДОМЛЕНИЕ**:  
-> Данный проект является **некоммерческим любительским экспериментом и хобби-исследованием** (DIY / Reverse-Engineering / Educational project), созданным исключительно в образовательных целях для изучения протоколов Bluetooth Low Energy (BLE) и алгоритмов распознавания жестов на базе 6-осевых инерциальных датчиков (IMU).  
-> **Проект не имеет никакого отношения к компании Żabka Polska sp. z o.o., её дочерним предприятиям или торговым маркам.** Названия «Triki», «Żabka» и сопутствующие обозначения упоминаются исключительно в целях описания совместимости физического оборудования (номинативное добросовестное использование / Nominative Fair Use). Проект не использует и не распространяет проприетарный код, облачные сервисы или закрытые ключи.
+[🇬🇧 English](#-english) | [🇵🇱 Polski](#-polski)
+
+---
+
+# 🇬🇧 English
+
+> ⚠️ **LEGAL DISCLAIMER & NOTICE**:  
+> This project is an **independent, non-commercial hobby experiment and DIY educational research project** created solely for personal learning, reverse engineering practice, and exploration of Bluetooth Low Energy (BLE) protocols and 6-axis Inertial Measurement Unit (IMU) gesture processing.  
+> **This project is NOT affiliated, associated, authorized, endorsed by, or in any way officially connected with Żabka Polska sp. z o.o.**, its subsidiaries, or its affiliates. The names "Triki", "Żabka", "Żappka", and related marks or logos are registered trademarks of their respective owners. Any reference to these names is strictly for hardware compatibility identification and educational purposes under **Nominative Fair Use**. This repository does not contain, reverse engineer, or distribute any proprietary code, cloud endpoints, or confidential keys.
 
 ---
 
@@ -10,90 +16,83 @@
 ![.NET 9](https://img.shields.io/badge/Platform-.NET%209%20WPF-purple.svg)
 ![Windows](https://img.shields.io/badge/OS-Windows%2010%2F11-0078D6.svg)
 ![BLE](https://img.shields.io/badge/Bluetooth-LE%205.0%20(NUS)-0082FC.svg)
-![Localization](https://img.shields.io/badge/Languages-%F0%9F%87%B7%F0%9F%87%BA%20RU%20%7C%20%F0%9F%87%AC%F0%9F%87%A7%20EN%20%7C%20%F0%9F%87%B5%F0%9F%87%B1%20PL-brightgreen.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-**Triki Music Controller** — приложение для Windows (WPF, .NET 9), превращающее интерактивную Bluetooth-шайбу / кольцо **Triki** в контроллер управления мультимедиа на ПК с поддержкой обучения пользовательским жестам.
+**Triki Music Controller** is a Windows desktop application (WPF, .NET 9) that turns the **Triki** smart wearable BLE ring/puck into a wireless gesture-based media controller for your PC, complete with an interactive Gesture Training Studio.
 
 ---
 
-## 🔍 Как устроено и работает устройство Triki
+## 🔍 How the Triki Hardware & Communication Works
 
-Физическое устройство **Triki** представляет собой миниатюрный носимый гаджет (распространяемый в рамках промо-акций сети Żabka), оснащенный аппаратной начинкой:
-1. **Микроконтроллер с поддержкой Bluetooth Low Energy (BLE 5.0)** (SoC Nordic Semiconductor / аналоги).
-2. **6-осевой инерциальный датчик (IMU)**: 3-осевой акселерометр + 3-осевой гироскоп.
-3. **Тактовая микрокнопка**: регистрация нажатий / удержания.
-4. **Аккумулятор Li-Po** со схемой зарядки и мониторингом напряжения.
+The **Triki** device is a compact wearable gadget featuring:
+1. **Bluetooth Low Energy (BLE 5.0) SoC** (Nordic Semiconductor architecture).
+2. **6-Axis Inertial Measurement Unit (IMU)**: 3-axis accelerometer + 3-axis gyroscope.
+3. **Tactile Push Button**: Physical click / hold detection.
+4. **Rechargeable Li-Po Battery**: Onboard charging and voltage monitoring.
 
-### 📡 Протокол связи (BLE GATT)
-Связь между ПК и устройством осуществляется по стандартному стеку **Bluetooth Low Energy**:
+### 📡 BLE GATT Architecture
+The application connects to the device using standard Bluetooth Low Energy GATT services:
 * **Nordic UART Service (NUS)**:
-  * Сервис UUID: `6e400001-b5a3-f393-e0a9-e50e24dcca9e`
-  * Характеристика записи (RX): `6e400002-b5a3-f393-e0a9-e50e24dcca9e`
-  * Характеристика уведомлений (TX Notify): `6e400003-b5a3-f393-e0a9-e50e24dcca9e`
-* **Battery Service (0x180F)**:
-  * Уровень батареи (0x2A19): опрос уровня заряда в процентах (0–100%).
-* **Device Information Service (0x180A)**:
-  * Опрос ревизии прошивки и модели (`0x2A26`, `0x2A24`).
+  * Service UUID: `6e400001-b5a3-f393-e0a9-e50e24dcca9e`
+  * RX Characteristic (Write command): `6e400002-b5a3-f393-e0a9-e50e24dcca9e`
+  * TX Characteristic (Telemetry Notify): `6e400003-b5a3-f393-e0a9-e50e24dcca9e`
+* **Battery Service (`0x180F`)**:
+  * Battery Level (`0x2A19`): Reads charge percentage (0–100%).
+* **Device Information Service (`0x180A`)**:
+  * Firmware Revision (`0x2A26`) and Model Number (`0x2A24`).
 
-### 📦 Структура пакетов данных
-1. **Инициализация телеметрии**:  
-   Для запуска непрерывного потока данных контроллер отправляет в RX-характеристику команду активации:  
+### 📦 Packet Structure & Protocol
+1. **Stream Activation**:  
+   To start continuous IMU telemetry transmission, the app writes an 8-byte initialization command to the RX characteristic:  
    `0x20 0x10 0x00 0xD0 0x07 0x68 0x00 0x03`
-2. **Формат входящего фрейма (14 байт)**:
-   * Байт 0: Заголовок пакета (`0x22`)
-   * Байт 1: Состояние аппаратной кнопки (`0x00` = отпущена, `0x01` = зажата)
-   * Байты 2–7: Акселерометр (X, Y, Z) в формате 16-битных знаковых целых (int16), масштаб `2048 LSB/G` (диапазон ±16G)
-   * Байты 8–13: Гироскоп (X, Y, Z) в формате 16-битных знаковых целых (int16), масштаб `131 LSB/(°/с)` (диапазон ±250 dps)
+2. **Incoming 14-Byte Telemetry Frame**:
+   * **Byte 0**: Packet Header (`0x22`)
+   * **Byte 1**: Button State (`0x00` = released, `0x01` = pressed/held)
+   * **Bytes 2–7**: Accelerometer X, Y, Z (16-bit signed integers, scale: `2048 LSB/G`, ±16G range)
+   * **Bytes 8–13**: Gyroscope X, Y, Z (16-bit signed integers, scale: `131 LSB/(°/s)`, ±250 dps range)
 
 ---
 
-## 🧠 Принцип распознавания жестов
+## 🧠 Gesture Recognition Engine
 
-Вместо жестко зашитых порогов приложение использует интеллектуальный конвейер обработки движений:
-1. **Фильтрация удержанием (Button-Gating)**:
-   Датчики Triki работают непрерывно, но анализ жестов активируется только тогда, когда пользователь осознанно зажимает кнопку на устройстве. Это гарантирует **0% ложных срабатываний** при ходьбе, наборе текста или жестикуляции.
-2. **Интерактивная студия обучения (Gesture Learning Engine)**:
-   Пользователь может самостоятельно обучить модель под особенности своей моторики:
-   * ⏯ **Пауза / Плей** — резкий взмах кистью вниз (Flick Down).
-   * ⏭ **Следующий трек** — взмах кистью вправо (Flick Right).
-   * ⏮ **Предыдущий трек** — взмах кистью влево (Flick Left).
-   * 🔊 **Громче** — вращение шайбы по часовой стрелке (Roll Right).
-   * 🔉 **Тише** — вращение шайбы против часовой стрелки (Roll Left).
-   * 🧘 **Покой / Шум** — фоновые микродвижения пальцев (для калибровки нулевой зоны).
-3. **Эмуляция системных медиа-клавиш**:
-   При фиксации жеста приложение через Win32 API (`keybd_event`) отправляет в Windows события виртуальных клавиш:
-   * `VK_MEDIA_PLAY_PAUSE` (0xB3)
-   * `VK_MEDIA_NEXT_TRACK` (0xB0)
-   * `VK_MEDIA_PREV_TRACK` (0xB1)
-   * `VK_VOLUME_UP` (0xAF) / `VK_VOLUME_DOWN` (0xAE)
-   Это обеспечивает мгновенную совместимость с любыми медиаплеерами: Spotify, YouTube Music, Яндекс Музыка, VK, браузеры и плееры ОС.
-
----
-
-## 💻 Возможности интерфейса ПК-приложения
-
-* **Живые шкалы датчиков**: отображение перегрузки (G) и скорости вращения (°/с) в реальном времени.
-* **Неоновые карточки действий**: визуальная подсветка срабатывания каждого действия.
-* **Трёхъязычная локализация (Multilingual)**:
-  * 🇷🇺 **Русский** (RU)
-  * 🇬🇧 **English** (EN)
-  * 🇵🇱 **Polski** (PL)
-  * Мгновенное переключение языка в шапке приложения на лету; сохранение настроек в `%APPDATA%\TrikiMusicController\settings.json`.
-* **Фоновый режим в системном трее**:
-  * Иконка в трее меняет цвет в зависимости от состояния связи (зеленый = подключено, желтый = поиск, красный = отключено).
-  * Информационные всплывающие уведомления (Balloon Tips).
-  * Контекстное меню с быстрым открытием и выходом.
+* **Button-Gated Recognition**:  
+  While IMU telemetry streams continuously, gesture recognition is only active while the user holds down the Triki button. This ensures **0% false triggers** during walking, typing, or normal arm motion.
+* **Interactive Gesture Training Studio**:  
+  Users can train natural, custom gestures for their movements:
+  * ⏯ **Play / Pause**: Quick downward flick (Flick Down).
+  * ⏭ **Next Track**: Quick rightward flick (Flick Right).
+  * ⏮ **Previous Track**: Quick leftward flick (Flick Left).
+  * 🔊 **Volume Up**: Clockwise rotation (Roll Right).
+  * 🔉 **Volume Down**: Counter-clockwise rotation (Roll Left).
+  * 🧘 **Idle / Hand Noise**: Finger resting motion calibration.
+* **Windows Media Key Emulation**:  
+  Recognized gestures dispatch virtual keyboard events (`keybd_event`):
+  * `VK_MEDIA_PLAY_PAUSE` (`0xB3`)
+  * `VK_MEDIA_NEXT_TRACK` (`0xB0`)
+  * `VK_MEDIA_PREV_TRACK` (`0xB1`)
+  * `VK_VOLUME_UP` (`0xAF`) / `VK_VOLUME_DOWN` (`0xAE`)  
+  Works out of the box with Spotify, YouTube Music, web browsers, and media players.
 
 ---
 
-## 🛠 Сборка и запуск
+## 💻 Desktop Application Features
 
-### Требования:
-* Windows 10 (версия 19041+) или Windows 11 с модулем Bluetooth LE.
-* [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) или выше.
+* **Real-Time Telemetry**: Live graphical progress bars for G-force and angular velocity (°/s).
+* **Neon Action Cards**: Instant visual glow feedback upon gesture trigger.
+* **Multilingual UI**: Instant runtime language switching between **English (EN)**, **Polski (PL)**, and **Russian (RU)**. Configuration saved to `%APPDATA%\TrikiMusicController\settings.json`.
+* **System Tray Integration**:
+  * Color-coded tray icons (Green = connected, Yellow = scanning, Red = disconnected).
+  * Balloon notifications and context menu.
 
-### Сборка из командной строки:
+---
+
+## 🛠 Build & Run Instructions
+
+### Prerequisites
+* Windows 10 (19041+) or Windows 11 with Bluetooth LE support.
+* [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) or higher.
+
+### Build via Command Line
 ```bash
 git clone git@github.com:HaruhakuGIT/TrikiMusicControllerPC.git
 cd TrikiMusicControllerPC
@@ -101,13 +100,98 @@ dotnet build
 dotnet run
 ```
 
-### Публикация единого exe-файла (Single Executable):
+### Publish Single-File Executable
 ```bash
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
 ```
 
 ---
+---
 
-## 📄 Лицензия
+# 🇵🇱 Polski
 
-MIT License — свободное использование в личных и образовательных целях.
+> ⚠️ **ZASTRZEŻENIE PRAWNE (DISCLAIMER)**:  
+> Niniejszy projekt jest **niezależnym, niekomercyjnym eksperymentem hobbystycznym oraz projektem edukacyjno-badawczym (DIY / Reverse Engineering)**, stworzonym wyłącznie do celów naukowych w zakresie protokołów Bluetooth Low Energy (BLE) oraz algorytmów rozpoznawania gestów z 6-osiowych czujników inercyjnych (IMU).  
+> **Projekt NIE jest w żaden sposób powiązany, autoryzowany, sponsorowany ani powiązany z firmą Żabka Polska sp. z o.o.** ani jej podmiotami zależnymi. Nazwy „Triki”, „Żabka”, „Żappka” oraz powiązane znaki towarowe należą do ich prawnych właścicieli i zostały użyte wyłącznie w celach identyfikacji kompatybilności sprzętowej w ramach **dozwolonego użytku (Nominative Fair Use)**. Repozytorium nie zawiera ani nie dystrybuuje żadnego prawnie zastrzeżonego kodu, usług chmurowych ani kluczy dostępowych.
+
+---
+
+**Triki Music Controller** to aplikacja na system Windows (WPF, .NET 9), która przekształca interaktywne urządzenie **Triki** (BLE) w bezprzewodowy kontroler multimediów z wbudowanym studiem uczenia gestów.
+
+---
+
+## 🔍 Budowa i działanie urządzenia Triki
+
+Fizyczne urządzenie **Triki** to miniaturowy gadżet ubieralny, wyposażony w:
+1. **Mikrokontroler Bluetooth Low Energy (BLE 5.0)** (architektura Nordic Semiconductor).
+2. **6-osiowy czujnik IMU**: 3-osiowy akcelerometr + 3-osiowy żyroskop.
+3. **Przycisk fizyczny**: Rejestracja kliknięć i przytrzymania.
+4. **Akumulator Li-Po** z wbudowanym kontrolerem ładowania.
+
+### 📡 Protokół komunikacji BLE GATT
+Aplikacja łączy się z urządzeniem za pomocą standardowych usług BLE:
+* **Nordic UART Service (NUS)**:
+  * UUID Usługi: `6e400001-b5a3-f393-e0a9-e50e24dcca9e`
+  * Charakterystyka RX (Zapis komend): `6e400002-b5a3-f393-e0a9-e50e24dcca9e`
+  * Charakterystyka TX (Powiadomienia telemetrii): `6e400003-b5a3-f393-e0a9-e50e24dcca9e`
+* **Battery Service (`0x180F`)**:
+  * Poziom baterii (`0x2A19`): Odczyt stanu naładowania w procentach (0–100%).
+* **Device Information Service (`0x180A`)**:
+  * Wersja oprogramowania układowego (`0x2A26`) oraz model (`0x2A24`).
+
+### 📦 Format ramek danych
+1. **Uruchomienie transmisji**:  
+   Aplikacja wysyła 8-bajtową komendę aktywacyjną do charakterystyki RX:  
+   `0x20 0x10 0x00 0xD0 0x07 0x68 0x00 0x03`
+2. **Odbierana 14-bajtowa ramka telemetryczna**:
+   * **Bajt 0**: Nagłówek ramki (`0x22`)
+   * **Bajt 1**: Stan przycisku (`0x00` = zwolniony, `0x01` = wciśnięty/przytrzymany)
+   * **Bajty 2–7**: Akcelerometr X, Y, Z (16-bitowe liczby ze znakiem int16, skala: `2048 LSB/G`, zakres ±16G)
+   * **Bajty 8–13**: Żyroskop X, Y, Z (16-bitowe liczby ze znakiem int16, skala: `131 LSB/(°/s)`, zakres ±250 dps)
+
+---
+
+## 🧠 System rozpoznawania gestów
+
+* **Filtrowanie przyciskiem (Button-Gating)**:  
+  Telemetria jest przesyłana na bieżąco, ale analiza gestów następuje wyłącznie podczas przytrzymania przycisku Triki. Gwarantuje to **0% przypadkowych wywołań** podczas chodzenia, gestykulacji czy pisania na klawiaturze.
+* **Interaktywne Studio Treningowe**:  
+  Możliwość nagrania własnych, naturalnych ruchów:
+  * ⏯ **Pauza / Odtwarzaj**: Dynamiczne machnięcie w dół (Flick Down).
+  * ⏭ **Następny utwór**: Machnięcie w prawo (Flick Right).
+  * ⏮ **Poprzedni utwór**: Machnięcie w lewo (Flick Left).
+  * 🔊 **Głośniej**: Obrót w prawo (Roll Right).
+  * 🔉 **Ciszej**: Obrót w lewo (Roll Left).
+  * 🧘 **Spoczynek / Szum dłoni**: Kalibracja martwej strefy.
+* **Emulacja klawiszy multimedialnych Windows**:  
+  Wykryty gest wysyła zdarzenie klawiatury systemowej (`keybd_event`): `VK_MEDIA_PLAY_PAUSE`, `VK_MEDIA_NEXT_TRACK`, `VK_MEDIA_PREV_TRACK`, `VK_VOLUME_UP`/`DOWN`. Działa ze Spotify, YouTube Music, przeglądarkami oraz odtwarzaczami systemowymi.
+
+---
+
+## 💻 Funkcje aplikacji
+
+* **Telemetria w czasie rzeczywistym**: Paski postępu siły przeciążenia (G) oraz prędkości kątowej (°/s).
+* **Wielojęzyczność (Multilingual)**: Przełączanie w locie na pasku górnym pomiędzy językiem **polskim (PL)**, **angielskim (EN)** i **rosyjskim (RU)**. Zapis konfiguracji w `%APPDATA%\TrikiMusicController\settings.json`.
+* **Działanie w zasobniku systemowym (Tray)**: Kolorowe ikony statusu połączenia, powiadomienia dymkowe oraz menu kontekstowe.
+
+---
+
+## 🛠 Kompilacja i uruchomienie
+
+### Wymagania:
+* Windows 10 (19041+) lub Windows 11 z obsługą Bluetooth LE.
+* [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) lub nowszy.
+
+### Kompilacja z poziomu konsoli:
+```bash
+git clone git@github.com:HaruhakuGIT/TrikiMusicControllerPC.git
+cd TrikiMusicControllerPC
+dotnet build
+dotnet run
+```
+
+---
+
+## 📄 Licencja
+
+MIT License — dozwolone do bezpłatnego użytku prywatnego i edukacyjnego.
