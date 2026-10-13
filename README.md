@@ -94,8 +94,8 @@ The application connects to the device using standard Bluetooth Low Energy GATT 
 
 ### Build via Command Line
 ```bash
-git clone git@github.com:HaruhakuGIT/TrikiMusicControllerPC.git
-cd TrikiMusicControllerPC
+git clone git@github.com:HaruhakuGIT/TrikiMusicControllerDesktop.git
+cd TrikiMusicControllerDesktop
 dotnet build
 dotnet run
 ```
@@ -184,8 +184,8 @@ Aplikacja łączy się z urządzeniem za pomocą standardowych usług BLE:
 
 ### Kompilacja z poziomu konsoli:
 ```bash
-git clone git@github.com:HaruhakuGIT/TrikiMusicControllerPC.git
-cd TrikiMusicControllerPC
+git clone git@github.com:HaruhakuGIT/TrikiMusicControllerDesktop.git
+cd TrikiMusicControllerDesktop
 dotnet build
 dotnet run
 ```
