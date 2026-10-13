@@ -1,0 +1,28 @@
+## Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## Visual Studio & JetBrains Rider
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.iml
+
+## OS generated
+[Tt]humbs.db
+[Ee]hthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+## Local test data / configs
+*.tmp
+*.log
+*.bak
+settings.local.json
